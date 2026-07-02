@@ -1,29 +1,32 @@
-from fastapi import FastAPI, HTTPException, status
+import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import List, Optional
+
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List
-from motor.motor_asyncio import AsyncIOMotorClient
-from bson import ObjectId
-import os
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict, EmailStr
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-MONGO_URI = os.getenv('MONGO_URI')
-DB_NAME = os.getenv('DB_NAME')
-FRONTEND_ORIGINS = os.getenv('FRONTEND_ORIGINS')
+from app.config import FRONTEND_ORIGINS
+from app.database import Base, engine, get_session
+from app.models import Profile
 
-# DB client and collection are configured at startup using environment variables
-client: Optional[AsyncIOMotorClient] = None
-db = None
-collection = None
-
-app = FastAPI()
-
-# Configure CORS middleware at import time (must be added before the app starts)
-if not FRONTEND_ORIGINS:
-    raise RuntimeError("Missing required environment variable: FRONTEND_ORIGINS")
 origins = [o.strip() for o in FRONTEND_ORIGINS.split(",") if o.strip()]
 if not origins:
     raise RuntimeError("FRONTEND_ORIGINS must contain at least one origin")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -32,19 +35,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
 
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError('Invalid objectid')
-        return ObjectId(v)
-
-
-class UserProfileBase(BaseModel):
+class ProfileBase(BaseModel):
     fullName: str
     email: EmailStr
     phoneNumber: Optional[str] = None
@@ -52,11 +44,11 @@ class UserProfileBase(BaseModel):
     isActive: bool = True
 
 
-class UserProfileCreate(UserProfileBase):
+class ProfileCreate(ProfileBase):
     pass
 
 
-class UserProfileUpdate(BaseModel):
+class ProfileUpdate(BaseModel):
     fullName: Optional[str] = None
     email: Optional[EmailStr] = None
     phoneNumber: Optional[str] = None
@@ -64,101 +56,104 @@ class UserProfileUpdate(BaseModel):
     isActive: Optional[bool] = None
 
 
-class UserProfileOut(UserProfileBase):
-    id: str = Field(..., alias="_id")
+class ProfileOut(ProfileBase):
+    id: str
     createdAt: datetime
     updatedAt: datetime
 
-    class Config:
-        allow_population_by_field_name = True
-        json_encoders = {
-            ObjectId: lambda v: str(v),
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(from_attributes=True)
 
 
-@app.on_event("startup")
-async def startup_db_client():
-    # Require env vars (no hardcoded fallbacks)
-    missing = []
-    for name, val in (("MONGO_URI", MONGO_URI), ("DB_NAME", DB_NAME)):
-        if not val:
-            missing.append(name)
-    if missing:
-        raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
-
-    # Initialize DB client and collection
-    global client, db, collection
-    client = AsyncIOMotorClient(MONGO_URI)
-    db = client[DB_NAME]
-    collection = db['user_profiles']
-
-    # Warm DB connection (non-fatal if Mongo isn't reachable yet)
-    try:
-        await client.server_info()
-    except Exception:
-        # If Mongo isn't ready, we'll let runtime errors surface on DB ops instead of failing app startup
-        pass
+FIELD_MAP = {
+    "fullName": "full_name",
+    "email": "email",
+    "phoneNumber": "phone_number",
+    "country": "country",
+    "isActive": "is_active",
+}
 
 
-@app.post('/api/profiles', response_model=UserProfileOut, status_code=status.HTTP_201_CREATED)
-async def create_profile(profile: UserProfileCreate):
-    now = datetime.utcnow()
-    payload = profile.dict()
-    payload.update({"createdAt": now, "updatedAt": now})
-    result = await collection.insert_one(payload)
-    created = await collection.find_one({"_id": result.inserted_id})
-    created['_id'] = str(created['_id'])
-    return created
+def to_out(profile: Profile) -> ProfileOut:
+    return ProfileOut(
+        id=str(profile.id),
+        fullName=profile.full_name,
+        email=profile.email,
+        phoneNumber=profile.phone_number,
+        country=profile.country,
+        isActive=profile.is_active,
+        createdAt=profile.created_at,
+        updatedAt=profile.updated_at,
+    )
 
 
-@app.get('/api/profiles', response_model=List[UserProfileOut])
-async def list_profiles():
-    cursor = collection.find().sort('createdAt', -1)
-    profiles = []
-    async for doc in cursor:
-        doc['_id'] = str(doc['_id'])
-        profiles.append(doc)
-    return profiles
+@app.get("/")
+async def root():
+    return "Application is running"
 
 
-@app.get('/api/profiles/{profile_id}', response_model=UserProfileOut)
-async def get_profile(profile_id: str):
-    if not ObjectId.is_valid(profile_id):
-        raise HTTPException(status_code=404, detail='Profile not found')
-    profile = await collection.find_one({"_id": ObjectId(profile_id)})
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+@app.post("/api/profiles", response_model=ProfileOut, status_code=status.HTTP_201_CREATED)
+async def create_profile(payload: ProfileCreate, session: AsyncSession = Depends(get_session)):
+    now = datetime.now(timezone.utc)
+    profile = Profile(
+        id=str(uuid.uuid4()),
+        full_name=payload.fullName,
+        email=payload.email,
+        phone_number=payload.phoneNumber,
+        country=payload.country,
+        is_active=payload.isActive,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(profile)
+    await session.commit()
+    await session.refresh(profile)
+    return to_out(profile)
+
+
+@app.get("/api/profiles", response_model=List[ProfileOut])
+async def list_profiles(session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(Profile).order_by(Profile.created_at.desc()))
+    return [to_out(p) for p in result.scalars().all()]
+
+
+@app.get("/api/profiles/{profile_id}", response_model=ProfileOut)
+async def get_profile(profile_id: str, session: AsyncSession = Depends(get_session)):
+    profile = await session.get(Profile, profile_id)
     if not profile:
-        raise HTTPException(status_code=404, detail='Profile not found')
-    profile['_id'] = str(profile['_id'])
-    return profile
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return to_out(profile)
 
 
-@app.patch('/api/profiles/{profile_id}', response_model=UserProfileOut)
-async def update_profile(profile_id: str, payload: UserProfileUpdate):
-    if not ObjectId.is_valid(profile_id):
-        raise HTTPException(status_code=404, detail='Profile not found')
-    update_data = {k: v for k, v in payload.dict(exclude_unset=True).items() if v is not None}
-    if update_data:
-        update_data['updatedAt'] = datetime.utcnow()
-        result = await collection.find_one_and_update(
-            {"_id": ObjectId(profile_id)},
-            {"$set": update_data},
-            return_document=True,
-        )
-    else:
-        result = await collection.find_one({"_id": ObjectId(profile_id)})
+@app.patch("/api/profiles/{profile_id}", response_model=ProfileOut)
+async def update_profile(
+    profile_id: str, payload: ProfileUpdate, session: AsyncSession = Depends(get_session)
+):
+    profile = await session.get(Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    data = payload.model_dump(exclude_unset=True)
+    changed = False
+    for key, value in data.items():
+        if value is not None:
+            setattr(profile, FIELD_MAP[key], value)
+            changed = True
+    if changed:
+        profile.updated_at = datetime.now(timezone.utc)
+    await session.commit()
+    await session.refresh(profile)
+    return to_out(profile)
 
-    if not result:
-        raise HTTPException(status_code=404, detail='Profile not found')
-    result['_id'] = str(result['_id'])
-    return result
 
-
-@app.delete('/api/profiles/{profile_id}', status_code=status.HTTP_200_OK)
-async def delete_profile(profile_id: str):
-    if not ObjectId.is_valid(profile_id):
-        raise HTTPException(status_code=404, detail='Profile not found')
-    res = await collection.delete_one({"_id": ObjectId(profile_id)})
-    if res.deleted_count == 0:
-        raise HTTPException(status_code=404, detail='Profile not found')
+@app.delete("/api/profiles/{profile_id}")
+async def delete_profile(profile_id: str, session: AsyncSession = Depends(get_session)):
+    profile = await session.get(Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    await session.delete(profile)
+    await session.commit()
     return {"message": "Profile deleted successfully"}
