@@ -14,6 +14,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# BACKEND_URL must be a valid URL at build time because `next build`
+# validates rewrites() destinations. Default matches the runtime value set
+# in docker-compose.yml; override with --build-arg if needed elsewhere.
+ARG BACKEND_URL=http://backend:8080
+ENV BACKEND_URL=${BACKEND_URL}
 RUN npm run build
 
 FROM base AS runner
