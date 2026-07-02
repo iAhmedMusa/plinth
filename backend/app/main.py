@@ -139,8 +139,11 @@ async def update_profile(
     data = payload.model_dump(exclude_unset=True)
     changed = False
     for key, value in data.items():
-        if value is not None:
-            setattr(profile, FIELD_MAP[key], value)
+        column = FIELD_MAP[key]
+        if key in ("fullName", "email") and value is None:
+            continue
+        if getattr(profile, column) != value:
+            setattr(profile, column, value)
             changed = True
     if changed:
         profile.updated_at = datetime.now(timezone.utc)
