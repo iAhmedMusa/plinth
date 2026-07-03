@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devops-assessment
+  labels:
+    app.kubernetes.io/name: devops-assessment
+spec:
+  ingressClassName: nginx
+  rules:
+    # devops.localtest.me resolves to 127.0.0.1 via public DNS -- no
+    # /etc/hosts edit needed for local dev.
+    - host: devops.localtest.me
+      http:
+        paths:
+          # Only the frontend is routed here. The frontend proxies /api/*
+          # to the backend internally via its Next.js rewrite; the backend
+          # is never exposed through the ingress.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000

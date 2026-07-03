@@ -1,0 +1,67 @@
+# =============================================================================
+# LOCAL DEV STAND-IN ONLY -- this Postgres runs in-cluster with an ephemeral
+# emptyDir volume. Production uses a managed private database (see the
+# Terraform/database docs phase); this manifest is never applied there.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          # NOTE: DATABASE_URL in backend-secrets is a full connection string
+          # (postgresql+asyncpg://user:pass@host:5432/db), not a bare
+          # password, so it can't be wired directly into POSTGRES_PASSWORD.
+          # These must stay in sync by hand with the <user>/<CHANGE_ME>/<db>
+          # placeholders in backend-secret-example.yaml.
+          env:
+            - name: POSTGRES_USER
+              value: appuser
+            - name: POSTGRES_PASSWORD
+              value: CHANGE_ME
+            - name: POSTGRES_DB
+              value: appdb
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        # Intentionally ephemeral for local dev -- data is lost on pod
+        # restart. A StatefulSet+PVC would be the natural next step, but
+        # the managed cloud DB replaces this workload entirely, so it's
+        # not worth building here.
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: database
+  ports:
+    - port: 5432
+      targetPort: 5432

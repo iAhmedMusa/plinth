@@ -1,0 +1,21 @@
+# Service name MUST be exactly "backend" -- the frontend's Next.js image
+# bakes http://backend:8080 into its /api/* rewrite at build time (see root
+# README design decisions). Renaming this breaks the frontend->backend proxy
+# without a rebuild.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/component: backend
+spec:
+  # ClusterIP: backend is internal-only per assessment, never exposed
+  # through the ingress.
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/component: backend
+  ports:
+    - port: 8080
+      targetPort: 8080
