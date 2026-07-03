@@ -116,7 +116,7 @@ jobs:
       # .trivyignore allowlist for accepted findings instead of a blanket
       # pass.
       - name: Scan backend image with Trivy
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${{ steps.tags.outputs.sha }}
           severity: "CRITICAL,HIGH"
@@ -125,7 +125,7 @@ jobs:
           output: "trivy-backend.txt"
 
       - name: Scan frontend image with Trivy
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ steps.tags.outputs.sha }}
           severity: "CRITICAL,HIGH"
