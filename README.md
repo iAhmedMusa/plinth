@@ -1,5 +1,7 @@
 # DevOps Assessment
 
+[![CI/CD](https://github.com/iAhmedMusa/devops-assessment/actions/workflows/deploy.yml/badge.svg)](https://github.com/iAhmedMusa/devops-assessment/actions/workflows/deploy.yml)
+
 User profile manager: Next.js frontend, FastAPI backend, PostgreSQL database, all containerized.
 
 ## Architecture
@@ -45,6 +47,15 @@ No database needs to be running — tests use an in-memory SQLite override.
 | backend  | DATABASE_URL      | postgresql+asyncpg://appuser:change-me@db:5432/appdb   | composed by compose from `.env`     |
 | backend  | FRONTEND_ORIGINS  | http://localhost:3000                                  | comma-separated CORS origins        |
 | frontend | BACKEND_URL       | http://backend:8080                                    | build-arg only — baked into the image at `docker build` time, see below |
+
+## CI/CD
+
+Pull requests run the backend and frontend test suites only. Pushing a
+`v*.*.*` tag runs the full pipeline: tests, build and push to Docker Hub
+with a Trivy vulnerability scan, a clearly-labeled mock ECR push, a GitHub
+release, and a clearly-labeled mock Kubernetes deploy. See
+[docs/ci-cd.md](docs/ci-cd.md) for the trigger model, image tagging policy,
+registry strategy, and secrets management.
 
 ## Design decisions
 
