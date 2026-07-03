@@ -106,7 +106,7 @@ export default function Home() {
   };
 
   const handleEdit = (profile: UserProfile) => {
-    setEditingId(profile._id);
+    setEditingId(profile.id);
     setFormData({
       fullName: profile.fullName,
       email: profile.email,
@@ -279,7 +279,7 @@ export default function Home() {
                 </TableHeader>
                 <TableBody>
                   {profiles.map((profile) => (
-                    <TableRow key={profile._id}>
+                    <TableRow key={profile.id}>
                       <TableCell className="font-medium">
                         {profile.fullName}
                       </TableCell>
@@ -347,7 +347,7 @@ export default function Home() {
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDelete(profile._id)}
+                                  onClick={() => handleDelete(profile.id)}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
                                   Delete
