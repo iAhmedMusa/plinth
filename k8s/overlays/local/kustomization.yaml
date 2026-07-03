@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: devops-assessment-local
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+# Real Docker Hub images + a concrete tag, set here so the placeholder in
+# base/ never has to change. Swap the repository below for your own
+# Docker Hub user if different.
+images:
+  - name: PLACEHOLDER/devops-assessment-backend
+    newName: iahmedmusa/devops-assessment-backend
+    newTag: "0.1.0"
+  - name: PLACEHOLDER/devops-assessment-frontend
+    newName: iahmedmusa/devops-assessment-frontend
+    newTag: "0.1.0"
