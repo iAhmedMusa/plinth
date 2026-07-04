@@ -67,6 +67,8 @@ branching/promotion strategy.
 | Kubernetes manifests & local deploy | [k8s/README.md](k8s/README.md) |
 | Terraform provisioning (EKS, ECR, RDS, monitoring) | [terraform/README.md](terraform/README.md) |
 | Private database connectivity (task 4) | [docs/database-connectivity.md](docs/database-connectivity.md) |
+| Troubleshooting (15 real-world scenarios) | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| Future improvements (production hardening) | [docs/future-improvements.md](docs/future-improvements.md) |
 
 ## Design decisions
 
