@@ -38,7 +38,7 @@ output "rds_endpoint" {
 output "log_group_names" {
   description = "CloudWatch log group names (cluster + application)."
   value = {
-    cluster     = module.monitoring.cluster_log_group_name
+    cluster     = module.eks.cluster_log_group_name
     application = module.monitoring.application_log_group_name
   }
 }

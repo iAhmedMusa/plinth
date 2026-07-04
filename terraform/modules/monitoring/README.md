@@ -2,8 +2,10 @@
 
 ## Purpose
 
-CloudWatch log groups, Container Insights (via the EKS addon), and example
-alarms for node CPU and RDS free storage.
+Application CloudWatch log group, Container Insights (via the EKS addon),
+and example alarms for node CPU and RDS free storage. The control plane
+log group is deliberately *not* here -- it lives in the eks module, which
+must create it before the cluster exists (see design notes).
 
 ## Inputs
 
@@ -22,11 +24,16 @@ alarms for node CPU and RDS free storage.
 
 | Name | Description |
 |---|---|
-| `cluster_log_group_name` | EKS control plane log group |
 | `application_log_group_name` | Application log group |
 
 ## Design notes
 
+- **No control plane log group here.** With `enabled_cluster_log_types`
+  set, EKS auto-creates `/aws/eks/<cluster>/cluster` the moment the
+  control plane comes up. This module runs *after* the eks module, so
+  creating that group here would fail the first apply with
+  `ResourceAlreadyExistsException`. The eks module owns it instead,
+  created before the cluster with an explicit `depends_on`.
 - **Container Insights via `aws_eks_addon`**, not a hand-rolled CloudWatch
   agent DaemonSet — AWS manages the collector's lifecycle and IRSA role
   for us, and it's what publishes the `ContainerInsights` namespace

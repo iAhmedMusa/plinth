@@ -1,3 +1,19 @@
+# Created BEFORE the cluster, and the cluster depends on it. With
+# enabled_cluster_log_types set, EKS auto-creates
+# /aws/eks/<name>/cluster the moment the control plane comes up -- if
+# Terraform tried to create the same group afterwards (e.g. from a
+# monitoring module that runs after this one), the first apply would fail
+# with ResourceAlreadyExistsException. Owning it here, pre-cluster, means
+# Terraform controls the retention policy too.
+resource "aws_cloudwatch_log_group" "cluster" {
+  name              = "/aws/eks/${var.name_prefix}-eks/cluster"
+  retention_in_days = var.log_retention_days
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-eks-cluster-logs"
+  })
+}
+
 resource "aws_eks_cluster" "this" {
   name     = "${var.name_prefix}-eks"
   role_arn = aws_iam_role.cluster.arn
@@ -25,6 +41,9 @@ resource "aws_eks_cluster" "this" {
 
   depends_on = [
     aws_iam_role_policy_attachment.cluster_policy,
+    # Log group must exist before EKS starts shipping control plane logs,
+    # otherwise EKS creates it itself and Terraform's own create collides.
+    aws_cloudwatch_log_group.cluster,
   ]
 
   lifecycle {

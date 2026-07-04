@@ -24,6 +24,11 @@ output "oidc_provider_arn" {
   value       = aws_iam_openid_connect_provider.eks.arn
 }
 
+output "cluster_log_group_name" {
+  description = "CloudWatch log group for the EKS control plane -- owned here, pre-cluster, so Terraform (not EKS auto-creation) controls it."
+  value       = aws_cloudwatch_log_group.cluster.name
+}
+
 output "oidc_provider_url" {
   description = "IAM OIDC provider issuer URL (without https://), used when writing IRSA trust policies."
   value       = replace(aws_eks_cluster.this.identity[0].oidc[0].issuer, "https://", "")

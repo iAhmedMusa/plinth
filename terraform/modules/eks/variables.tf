@@ -44,6 +44,12 @@ variable "node_max_size" {
   type        = number
 }
 
+variable "log_retention_days" {
+  description = "Retention for the control plane CloudWatch log group this module owns (created before the cluster -- see main.tf)."
+  type        = number
+  default     = 30
+}
+
 variable "tags" {
   description = "Common tags merged onto every resource."
   type        = map(string)

@@ -1,12 +1,8 @@
-resource "aws_cloudwatch_log_group" "cluster" {
-  name              = "/aws/eks/${var.cluster_name}/cluster"
-  retention_in_days = var.log_retention_days
-
-  tags = merge(var.tags, {
-    Name = "${var.name_prefix}-eks-cluster-logs"
-  })
-}
-
+# The control plane log group (/aws/eks/<cluster>/cluster) is deliberately
+# NOT created here: with enabled_cluster_log_types set, EKS auto-creates it
+# at cluster creation, so it must be owned by the eks module and created
+# BEFORE the cluster -- creating it here (post-cluster) would fail the
+# first apply with ResourceAlreadyExistsException. See modules/eks/main.tf.
 resource "aws_cloudwatch_log_group" "application" {
   name              = "/aws/eks/${var.cluster_name}/application"
   retention_in_days = var.log_retention_days
@@ -40,7 +36,11 @@ locals {
   # the placeholder topic created above so alarms always have a valid
   # (if unsubscribed) action target. Wire a real subscription -- email,
   # Slack via a Lambda, PagerDuty -- once an on-call channel exists.
-  alarm_actions = [var.sns_topic_arn != "" ? var.sns_topic_arn : aws_sns_topic.alarms[0].arn]
+  # coalesce over the splat (rather than indexing alarms[0] in a ternary
+  # branch) stays valid however this is refactored: when a real topic ARN
+  # is passed in, the placeholder topic has count = 0 and the splat is
+  # simply empty.
+  alarm_actions = [coalesce(var.sns_topic_arn != "" ? var.sns_topic_arn : null, one(aws_sns_topic.alarms[*].arn))]
 }
 
 resource "aws_cloudwatch_metric_alarm" "node_cpu_high" {
