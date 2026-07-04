@@ -2,8 +2,9 @@
 
 ## Purpose
 
-EKS control plane, managed node group, IAM roles built from scratch, and
-an OIDC provider for IRSA.
+EKS control plane, managed node group, IAM roles built from scratch, an
+OIDC provider for IRSA, and the control plane CloudWatch log group (owned
+here, created *before* the cluster -- see design notes).
 
 ## Inputs
 
@@ -16,6 +17,7 @@ an OIDC provider for IRSA.
 | `public_access_cidrs` | CIDRs allowed to hit the public API endpoint | `["0.0.0.0/0"]` |
 | `node_instance_type` | Node group instance type | (required) |
 | `node_desired_size` / `node_min_size` / `node_max_size` | Node group scaling | (required) |
+| `log_retention_days` | Control plane log group retention | `30` |
 | `tags` | Common tags | `{}` |
 
 ## Outputs
@@ -26,6 +28,7 @@ an OIDC provider for IRSA.
 | `cluster_endpoint` | API server endpoint |
 | `cluster_ca` | CA cert, base64 (sensitive) |
 | `node_security_group_id` | Node SG ID -- consumed by the rds module |
+| `cluster_log_group_name` | Control plane CloudWatch log group |
 | `oidc_provider_arn` | IRSA OIDC provider ARN |
 | `oidc_provider_url` | IRSA OIDC issuer URL (no scheme) |
 
@@ -45,12 +48,14 @@ an OIDC provider for IRSA.
   the only path to the private endpoint — flip it once a VPN/bastion
   exists; nothing else in this module has to change.
 - **Two security groups, minimal rules.** Cluster SG allows node->API
-  (443 inbound) and control-plane->kubelet (10250 outbound). Node SG
-  allows all traffic between nodes (CNI/kube-proxy/DNS), control
-  plane->kubelet (10250) and control-plane->webhook (443) inbound, and
-  unrestricted egress (nodes need to reach ECR, S3, STS, and pull images).
-  Every rule is its own resource with a one-line reason in its
-  `description`.
+  (443 inbound) and control-plane->kubelet (10250) plus
+  control-plane->webhook (443) outbound. Node SG allows all traffic
+  between nodes (CNI/kube-proxy/DNS), control plane->kubelet (10250) and
+  control-plane->webhook (443) inbound, and unrestricted egress (nodes
+  need to reach ECR, S3, STS, and pull images). Ingress and egress legs
+  are kept symmetric -- an ingress rule whose counterpart egress is
+  missing can never carry traffic. Every rule is its own resource with a
+  one-line reason in its `description`.
 - **OIDC / IRSA.** The `tls_certificate` data source reads the cluster's
   own OIDC issuer certificate to derive the thumbprint the
   `aws_iam_openid_connect_provider` needs. Both the issuer URL and the
@@ -65,9 +70,18 @@ an OIDC provider for IRSA.
   endpoint, a new CA, and every node group rebuilt — costly enough that it
   should never happen from an unreviewed `plan`/`apply`. See root
   `README.md`, section 8, for what to check before ever removing this.
-- **Node group `create_before_destroy` + `ignore_changes` on
-  `desired_size`.** Replacing a node group (e.g. new AMI, new instance
-  type) provisions the new one before tearing down the old, avoiding a
-  capacity gap. `desired_size` is ignored post-creation so a
-  cluster-autoscaler or manual scaling action isn't fought by the next
-  `terraform apply`.
+- **Node group `create_before_destroy` + `node_group_name_prefix` +
+  `ignore_changes` on `desired_size`.** Replacing a node group (e.g. new
+  AMI, new instance type) provisions the new one before tearing down the
+  old, avoiding a capacity gap. That only works with
+  `node_group_name_prefix` (not a fixed `node_group_name`): the old and
+  new groups coexist during the swap and two node groups cannot share a
+  name. `desired_size` is ignored post-creation so a cluster-autoscaler
+  or manual scaling action isn't fought by the next `terraform apply`.
+- **Control plane log group owned here, created pre-cluster.** With
+  `enabled_cluster_log_types` set, EKS auto-creates
+  `/aws/eks/<name>/cluster` as soon as the control plane exists. If any
+  Terraform resource tried to create that group *after* the cluster, the
+  first apply would fail with `ResourceAlreadyExistsException` -- so this
+  module creates it first and the cluster `depends_on` it, which also
+  puts the retention policy under Terraform's control.

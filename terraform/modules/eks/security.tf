@@ -38,6 +38,20 @@ resource "aws_security_group_rule" "cluster_egress_to_nodes" {
   source_security_group_id = aws_security_group.node.id
 }
 
+# Symmetric to the node SG's "control plane to webhook (443)" ingress rule
+# below -- without this egress leg, that ingress rule could never carry
+# traffic through this SG pair (admission webhooks, aggregated API
+# servers like metrics-server).
+resource "aws_security_group_rule" "cluster_egress_to_nodes_webhook" {
+  description              = "Control plane to webhook / aggregated API (443)"
+  type                     = "egress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.cluster.id
+  source_security_group_id = aws_security_group.node.id
+}
+
 # --- Node security group ---
 
 resource "aws_security_group" "node" {
