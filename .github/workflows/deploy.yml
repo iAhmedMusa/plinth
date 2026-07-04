@@ -255,8 +255,12 @@ jobs:
             wget -qO- --timeout=5 http://backend:8080/health
 
       - name: Smoke test — ingress reachable from the runner
+        # ingress-nginx's pod can report Ready before it finishes
+        # programming the nginx config for a freshly-applied Ingress, so
+        # the first request or two can 503 -- retry instead of a single shot.
         run: |
-          curl --fail --resolve devops.localtest.me:80:127.0.0.1 \
+          curl --fail --retry 5 --retry-delay 3 --retry-all-errors \
+            --resolve devops.localtest.me:80:127.0.0.1 \
             http://devops.localtest.me/
 
       - name: Dump diagnostics on failure
