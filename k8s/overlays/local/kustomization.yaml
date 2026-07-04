@@ -13,7 +13,7 @@ resources:
 images:
   - name: PLACEHOLDER/devops-assessment-backend
     newName: ahmedmusa/devops-assessment-backend
-    newTag: "0.1.1"
+    newTag: "0.1.2"
   - name: PLACEHOLDER/devops-assessment-frontend
     newName: ahmedmusa/devops-assessment-frontend
-    newTag: "0.1.1"
+    newTag: "0.1.2"
