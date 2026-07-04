@@ -12,14 +12,14 @@ real runs — no mocked or synthetic output.
 Two backend replicas, two frontend replicas, one postgres — all running
 in the `devops-assessment-local` namespace:
 
-![kubectl get all — local namespace](../proof/Screenshot%202026-07-04%20at%2011.07.11.png)
+![kubectl get all — local namespace](proof/Screenshot%202026-07-04%20at%2011.07.11.png)
 
 ### Production namespace (multi-replica)
 
 Three backend replicas, two frontend replicas, one postgres — all
 `Running`, all `1/1 Ready`:
 
-![kubectl get all — production namespace](../proof/Screenshot%202026-07-04%20at%2011.05.50.png)
+![kubectl get all — production namespace](proof/Screenshot%202026-07-04%20at%2011.05.50.png)
 
 ---
 
@@ -31,21 +31,21 @@ All 7 jobs passed: test backend, test frontend, build and push images,
 mock ECR push, GitHub release, mock staging deploy, mock production
 deploy. Total: 14m 19s.
 
-![Pipeline v0.1.2 — all jobs green](../proof/Screenshot%202026-07-04%20at%2011.28.47.png)
+![Pipeline v0.1.2 — all jobs green](proof/Screenshot%202026-07-04%20at%2011.28.47.png)
 
 ### Docker build records and Trivy scan artifacts
 
 Three artifacts produced: frontend build record (112 KB), backend build
 record (95.8 KB), and Trivy scan results (8.15 KB).
 
-![Artifacts — build records + Trivy scan](../proof/Screenshot%202026-07-04%20at%2011.28.59.png)
+![Artifacts — build records + Trivy scan](proof/Screenshot%202026-07-04%20at%2011.28.59.png)
 
 ### Build details — frontend and backend
 
 Frontend build: 8m 21s. Backend build: 2m 21s. Both completed with 0%
 cache (clean builds).
 
-![Build summary — frontend and backend](../proof/Screenshot%202026-07-04%20at%2011.29.09.png)
+![Build summary — frontend and backend](proof/Screenshot%202026-07-04%20at%2011.29.09.png)
 
 ### Staging deploy in progress (v0.2.0)
 
@@ -53,21 +53,21 @@ Pipeline triggered by merge to `ci/kind-staging-deploy`. "Deploy to
 staging (kind)" job running — proves the real kind cluster deploy step
 works, not just the mock.
 
-![Staging deploy running](../proof/Screenshot%202026-07-04%20at%2011.57.54.png)
+![Staging deploy running](proof/Screenshot%202026-07-04%20at%2011.57.54.png)
 
 ### Production approval gate (v0.2.1)
 
 Pipeline paused at "Deploy to production" — GitHub environment protection
 rule requested a review before proceeding:
 
-![Waiting for production review](../proof/Screenshot%202026-07-04%20at%2012.17.34.png)
+![Waiting for production review](proof/Screenshot%202026-07-04%20at%2012.17.34.png)
 
 ### Approval dialog
 
 The "Review pending deployments" modal — reviewer must check the
 `production` environment and click "Approve and deploy":
 
-![Approval dialog](../proof/Screenshot%202026-07-04%20at%2012.17.43.png)
+![Approval dialog](proof/Screenshot%202026-07-04%20at%2012.17.43.png)
 
 ### Pipeline success after approval (v0.2.1)
 
@@ -75,14 +75,14 @@ All 7 jobs green after manual approval. Total: 16m 30s. The full chain
 (test → build → release → staging → approval → production) completed
 end-to-end.
 
-![Pipeline success after approval](../proof/Screenshot%202026-07-04%20at%2012.17.54.png)
+![Pipeline success after approval](proof/Screenshot%202026-07-04%20at%2012.17.54.png)
 
 ### Latest pipeline run (v0.3.0)
 
 Triggered by merge of `feat/terraform-eks`. All jobs passed. Total:
 14m 57s.
 
-![Pipeline v0.3.0 — all jobs green](../proof/Screenshot%202026-07-04%20at%2013.11.00.png)
+![Pipeline v0.3.0 — all jobs green](proof/Screenshot%202026-07-04%20at%2013.11.00.png)
 
 ---
 
@@ -129,7 +129,7 @@ terraform init -backend=false
 terraform validate                              # passes
 terraform fmt -check -recursive                  # passes
 terraform plan -var-file=envs/dev.tfvars \
-  -out=tfplan-dev 2>&1 | tee ../proof/tfplan-dev.txt
+  -out=tfplan-dev 2>&1 | tee proof/tfplan-dev.txt
 ```
 
 Notable from the plan:
