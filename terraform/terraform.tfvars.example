@@ -1,0 +1,24 @@
+# Copy to terraform.tfvars for ad-hoc local use, or pass an envs/*.tfvars
+# file explicitly via -var-file (the recommended path -- see README.md,
+# section 1). No secrets belong in any tfvars file: there is no
+# db_password variable at all (see README.md, section 7).
+
+environment        = "dev"
+region             = "ap-southeast-1"
+cluster_name       = "devops-assessment"
+kubernetes_version = "1.30"
+vpc_cidr           = "10.0.0.0/16"
+
+node_instance_type = "t3.medium"
+node_desired_size  = 2
+node_min_size      = 2
+node_max_size      = 4
+
+db_instance_class = "db.t4g.micro"
+db_name           = "appdb"
+db_username       = "appuser"
+
+tags = {
+  Project = "devops-assessment"
+  Owner   = "platform-team"
+}
