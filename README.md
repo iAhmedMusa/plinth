@@ -59,6 +59,15 @@ approval gate; see [docs/ci-cd.md](docs/ci-cd.md) for the trigger model,
 image tagging policy, registry strategy, secrets management, and
 branching/promotion strategy.
 
+## Documentation
+
+| Topic | Doc |
+|-------|-----|
+| CI/CD pipeline (triggers, tagging, promotion) | [docs/ci-cd.md](docs/ci-cd.md) |
+| Kubernetes manifests & local deploy | [k8s/README.md](k8s/README.md) |
+| Terraform provisioning (EKS, ECR, RDS, monitoring) | [terraform/README.md](terraform/README.md) |
+| Private database connectivity (task 4) | [docs/database-connectivity.md](docs/database-connectivity.md) |
+
 ## Design decisions
 
 ### Frontend-to-backend routing (build-time rewrite)
