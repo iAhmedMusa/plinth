@@ -36,7 +36,7 @@ Kustomize-based manifests with base + overlays (local, staging, production, CI).
 
 ### Task 4 — Private database connectivity
 
-The backend reaches PostgreSQL without the database ever being reachable from the internet. The setup uses a three-tier VPC (public / private-app / private-db), security-group-to-security-group firewall rules (not CIDR), Kubernetes NetworkPolicy restricting port 5432 to backend pods only, and AWS Secrets Manager for credential storage — the master password never exists in Terraform code. See [docs/database-connectivity.md](docs/database-connectivity.md).
+The backend reaches PostgreSQL without the database ever being reachable from the internet. The setup uses a three-tier VPC (public / private-app / private-db), security-group-to-security-group firewall rules (not CIDR), Kubernetes NetworkPolicy restricting port 5432 to backend pods only, and AWS Secrets Manager for credential storage — the master password never exists in Terraform code. See [docs/networking.md](docs/networking.md).
 
 ### Task 5 — Infrastructure as code (Terraform)
 
@@ -44,11 +44,11 @@ Five custom modules (network, EKS, ECR, RDS, monitoring) provisioning a producti
 
 ### Task 6 — Troubleshooting
 
-Fifteen real-world failure scenarios — pods crashing, app unreachable, SSL errors, pipeline failures, database timeouts, secrets leaked, Terraform drift — with practical diagnostic commands and root-cause patterns. See [docs/troubleshooting.md](docs/troubleshooting.md).
+Fifteen real-world failure scenarios — pods crashing, app unreachable, SSL errors, pipeline failures, database timeouts, secrets leaked, Terraform drift — with practical diagnostic commands and root-cause patterns. See [docs/operations/runbook.md](docs/operations/runbook.md).
 
 ### Task 7 — Future improvements
 
-Seven production hardening proposals: HPA autoscaling, GitOps with ArgoCD, canary deployments, centralized logging, image signing, OPA Gatekeeper policies, and multi-region disaster recovery. Each with what/why/how/risk-removed. See [docs/future-improvements.md](docs/future-improvements.md).
+Seven production hardening proposals: HPA autoscaling, GitOps with ArgoCD, canary deployments, centralized logging, image signing, OPA Gatekeeper policies, and multi-region disaster recovery. Each with what/why/how/risk-removed. See [docs/roadmap.md](docs/roadmap.md).
 
 ## Environment variables
 
@@ -79,7 +79,7 @@ No database needed — tests use an in-memory SQLite override.
 | CI/CD pipeline | [docs/ci-cd.md](docs/ci-cd.md) |
 | Kubernetes manifests | [k8s/README.md](k8s/README.md) |
 | Terraform infrastructure | [terraform/README.md](terraform/README.md) |
-| Private database connectivity | [docs/database-connectivity.md](docs/database-connectivity.md) |
-| Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
-| Future improvements | [docs/future-improvements.md](docs/future-improvements.md) |
+| Private database connectivity | [docs/networking.md](docs/networking.md) |
+| Runbook | [docs/operations/runbook.md](docs/operations/runbook.md) |
+| Roadmap | [docs/roadmap.md](docs/roadmap.md) |
 | Proof of work | [docs/proof.md](docs/proof.md) |

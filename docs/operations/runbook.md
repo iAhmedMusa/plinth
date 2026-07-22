@@ -1,21 +1,21 @@
-# Troubleshooting
+# Runbook
 
-Fifteen real-world failure scenarios with short, practical answers. Each
-answer follows the same shape: what to check first, the commands to run,
-and the root-cause pattern behind the symptom.
+Fifteen real-world failure scenarios. Each entry follows the same shape:
+**Symptom → Triage commands → Likely causes → Fix → Prevention.**
 
 ---
 
 ## 1. Pods stuck in `CrashLoopBackOff`
 
-**Check:**
+**Symptom:** A pod repeatedly restarts and never reaches `Ready`.
 
+**Triage commands:**
 ```bash
 kubectl logs <pod-name> --previous   # logs from the crashed container
 kubectl describe pod <pod-name>      # last state + exit code
 ```
 
-**Common causes:**
+**Likely causes:**
 - Application fails to start (missing env var, bad DATABASE_URL, port
   conflict).
 - Readiness probe fires before the app is ready — the container starts,
@@ -25,22 +25,27 @@ kubectl describe pod <pod-name>      # last state + exit code
   memory leak.
 
 **Fix:** Read the logs first. The exit code tells you everything — exit 1
-is an application error, exit 137 is SIGKILL (OOM or manual kill), exit
-1 is almost always a code bug or missing configuration.
+is an application error, exit 137 is SIGKILL (OOM or manual kill).
+
+**Prevention:** Run the app's own smoke tests (`pytest`, `npm run build`)
+in CI before every deploy, and keep `readinessProbe.initialDelaySeconds`
+generous enough for real startup time rather than tuning it against a
+warm local machine.
 
 ---
 
 ## 2. Pods in `ImagePullBackOff`
 
-**Check:**
+**Symptom:** A pod stays `Pending`/`ImagePullBackOff` and never starts.
 
+**Triage commands:**
 ```bash
 kubectl describe pod <pod-name> | grep -A5 "Events"
 ```
 
-**Common causes:**
+**Likely causes:**
 - Typo in the image name or tag (e.g. `plinth-backend:0.1.0`
-  vs `plinth-backend:0.1.0`).
+  vs `plinth-backend:0.1.O`).
 - Image doesn't exist in the registry — the tag was never pushed, or
   the CI pipeline that builds it hasn't run yet.
 - `imagePullSecrets` missing or misconfigured for private registries.
@@ -50,20 +55,25 @@ kubectl describe pod <pod-name> | grep -A5 "Events"
 docker manifest inspect <registry>/<image>:<tag>
 ```
 
+**Prevention:** Images are already tagged with immutable semver + short
+SHA (never `latest`) — always verify with `docker manifest inspect`
+before merging an overlay change that references a new tag, not after.
+
 ---
 
 ## 3. Application is unreachable from the browser
 
-**Check (in order):**
+**Symptom:** The frontend URL times out or returns a connection error.
 
+**Triage commands (in order):**
 ```bash
 kubectl get ingress                     # is the Ingress object created?
 kubectl get pods -n ingress-nginx       # is the controller running?
 kubectl logs -n ingress-nginx deploy/ingress-nginx-controller --tail=50
-curl -H "Host: devops.localtest.me" http://<ingress-ip>/   # direct hit
+curl -H "Host: plinth.localtest.me" http://<ingress-ip>/   # direct hit
 ```
 
-**Common causes:**
+**Likely causes:**
 - Ingress controller not installed or not ready — apply the
   ingress-nginx manifest and wait for the pod to become `Ready`.
 - Host header mismatch — the browser sends a host that doesn't match
@@ -74,12 +84,17 @@ curl -H "Host: devops.localtest.me" http://<ingress-ip>/   # direct hit
 it? Does the controller's nginx config include your host? Does DNS
 resolve the host to the ingress IP?
 
+**Prevention:** `kubectl apply -k <overlay> --dry-run=client` in CI
+catches a missing ingress class or host mismatch before it ever reaches
+a real cluster.
+
 ---
 
 ## 4. Backend returns 502 Bad Gateway
 
-**Check:**
+**Symptom:** The frontend loads but every API call returns 502.
 
+**Triage commands:**
 ```bash
 kubectl logs deploy/frontend --tail=50   # Next.js proxy logs
 kubectl logs deploy/backend --tail=50    # backend app logs
@@ -87,7 +102,7 @@ kubectl get svc backend                  # does the Service exist?
 kubectl get endpoints backend            # does it have ready addresses?
 ```
 
-**Common causes:**
+**Likely causes:**
 - Backend pod is not `Ready` (failing health checks) — the Service has
   no endpoints, so the frontend's proxy gets connection refused.
 - Backend port mismatch — Service `targetPort` doesn't match the
@@ -98,12 +113,17 @@ kubectl get endpoints backend            # does it have ready addresses?
 backend pods aren't passing readiness probes — fix the probe config or
 the app itself.
 
+**Prevention:** Keep readiness probes strict (fail fast on a broken
+dependency) so an unready backend pod never gets a Service endpoint in
+the first place — a lenient probe just delays this exact symptom.
+
 ---
 
 ## 5. Database connection timeout
 
-**Check:**
+**Symptom:** The backend logs connection timeouts to `db`/RDS.
 
+**Triage commands:**
 ```bash
 kubectl exec deploy/backend -- python -c "
 import socket
@@ -112,32 +132,35 @@ print('connected')
 " 2>&1 || echo "TIMEOUT"
 ```
 
-**Common causes:**
+**Likely causes:**
 - Database pod not running (`kubectl get pods -l app.kubernetes.io/name=postgres`).
 - `DATABASE_URL` env var points to the wrong host/port.
 - Security group (cloud) or NetworkPolicy (cluster) blocking port 5432.
 - Database container is healthy but the application tries to connect
-  before the database is ready — the `depends_on` condition in compose
-  or the readiness probe should prevent this, but timing can still
-  slip.
+  before the database is ready.
 
 **Fix:** Test connectivity from inside the backend pod. If the socket
 connects but authentication fails, the credentials are wrong. If the
 socket times out, it's a network/availability issue.
 
+**Prevention:** Compose's `depends_on: condition: service_healthy` and
+the backend's own readiness probe already sequence startup — don't
+relax either one to "fix" a slow environment; fix the environment.
+
 ---
 
 ## 6. SSL certificate errors in the browser
 
-**Check:**
+**Symptom:** The browser shows an invalid/expired certificate warning.
 
+**Triage commands:**
 ```bash
 kubectl get certificate -A               # cert-manager objects
 kubectl describe certificate <name>      # issuance status
 kubectl logs -n cert-manager deploy/cert-manager --tail=50
 ```
 
-**Common causes:**
+**Likely causes:**
 - cert-manager not installed or not configured with a ClusterIssuer.
 - DNS not pointing to the ingress — Let's Encrypt can't reach the
   domain to complete the HTTP-01 challenge.
@@ -148,14 +171,20 @@ kubectl logs -n cert-manager deploy/cert-manager --tail=50
 you exactly what went wrong. For Let's Encrypt, the challenge pod
 (`kubectl get pods -n cert-manager`) must complete successfully.
 
+**Prevention:** Alert on `Certificate` resources sitting in `Ready:
+False` for more than ~10 minutes, instead of waiting for a user to
+report the browser warning.
+
 ---
 
 ## 7. CI pipeline fails at the build step
 
-**Check:**
+**Symptom:** The `test-backend`/`test-frontend` or build job fails.
+
+**Triage commands:**
 - Open the failed GitHub Actions run and read the step output.
 
-**Common causes:**
+**Likely causes:**
 - `npm ci` fails because `package-lock.json` is out of sync with
   `package.json` — run `npm install` locally and commit the lock file.
 - Docker build fails because a file referenced in `COPY` or `ADD` is
@@ -169,18 +198,23 @@ docker build --no-cache ./backend
 docker build --no-cache ./frontend
 ```
 
+**Prevention:** Commit `package-lock.json` alongside every
+`package.json` change; treat lockfile drift as a merge-blocking CI
+failure rather than something to `npm install` around later.
+
 ---
 
 ## 8. CI pipeline fails at the deploy step
 
-**Check:**
+**Symptom:** The `deploy-staging` job fails after build-and-push succeeds.
 
+**Triage commands:**
 ```bash
 # In the GitHub Actions log, look for:
 kubectl apply -k k8s/overlays/ci --dry-run=client -o yaml
 ```
 
-**Common causes:**
+**Likely causes:**
 - `kustomize edit set image` references a repository name that doesn't
   match what was pushed (case sensitivity, missing namespace prefix).
 - The kind cluster creation failed silently — ingress-nginx install
@@ -188,12 +222,19 @@ kubectl apply -k k8s/overlays/ci --dry-run=client -o yaml
 - The namespace in the overlay doesn't match what `kubectl rollout
   status` expects.
 
-**Fix:** The pipeline's "Dump diagnostics on failure" step (if running
-in staging) dumps pod status, describe, and logs. Start there.
+**Fix:** The pipeline's "Dump diagnostics on failure" step (running in
+the `deploy-staging` job) dumps pod status, describe, and logs. Start
+there.
+
+**Prevention:** Keep "Dump diagnostics on failure" wired to every deploy
+job — a failure that already explains itself is the cheapest kind to
+fix.
 
 ---
 
 ## 9. Secrets accidentally pushed to GitHub
+
+**Symptom:** A credential, token, or key shows up in a commit diff.
 
 **Immediate response:**
 
@@ -216,15 +257,17 @@ CI check that fails if any `.env` file is tracked.
 
 ## 10. Pod evicted by node pressure (OOMKilled / disk pressure)
 
-**Check:**
+**Symptom:** A pod disappears and reschedules elsewhere with no crash
+loop in its own logs.
 
+**Triage commands:**
 ```bash
 kubectl get pods --field-selector=status.phase=Failed -o wide
 kubectl describe node <node-name> | grep -A10 "Conditions"
 kubectl top pods                        # current memory usage
 ```
 
-**Common causes:**
+**Likely causes:**
 - Container memory limit too low — the app legitimately needs more
   than allocated.
 - Node running too many pods — no headroom for scheduling.
@@ -234,17 +277,23 @@ kubectl top pods                        # current memory usage
 actual usage is close to the limit, increase the request/limit. If it's
 a leak, fix the code.
 
+**Prevention:** Right-size requests/limits from `kubectl top pods`
+history before raising replica counts — set limits from observed data,
+not a guess, so this doesn't happen in the first place.
+
 ---
 
 ## 11. Terraform plan shows unwanted resource replacement
 
-**Check:**
+**Symptom:** `terraform plan` shows `-/+` (destroy and recreate) on a
+resource you only meant to update.
 
+**Triage commands:**
 ```bash
 terraform plan -var-file=envs/production.tfvars 2>&1 | grep -E "(-/\+|~)"
 ```
 
-**Common causes:**
+**Likely causes:**
 - A resource attribute changed that is `ForceNew` (e.g. EKS cluster
   `name`, RDS `engine`).
 - A provider upgrade changed `ForceNew` behavior on a previously-mutable
@@ -255,22 +304,26 @@ terraform plan -var-file=envs/production.tfvars 2>&1 | grep -E "(-/\+|~)"
 
 **Fix:** Read the plan output carefully — it names the specific field
 that forces replacement. If it's a rename, use `terraform state mv`. If
-it's drift, import the manual change or revert it. The `prevent_destroy`
-lifecycle on EKS and RDS is the backstop — it blocks accidental
-destruction at `plan` time.
+it's drift, import the manual change or revert it.
+
+**Prevention:** `prevent_destroy` (already set on EKS and RDS) is the
+backstop, not the first line of defense — always read the `-/+` lines in
+plan output before approving an apply, in CI or by hand.
 
 ---
 
 ## 12. Kustomize overlay applies wrong image tag
 
-**Check:**
+**Symptom:** A newly deployed pod is running an unexpected image
+version.
 
+**Triage commands:**
 ```bash
-kustomize build k8s/overlays/staging | grep "image:"
-kustomize build k8s/overlays/production | grep "image:"
+kubectl kustomize k8s/overlays/staging | grep "image:"
+kubectl kustomize k8s/overlays/production | grep "image:"
 ```
 
-**Common causes:**
+**Likely causes:**
 - The overlay's `kustomization.yaml` `images:` transformer references
   the wrong repository or tag.
 - CI's `kustomize edit set image` command targets the wrong overlay
@@ -278,23 +331,27 @@ kustomize build k8s/overlays/production | grep "image:"
 - Base manifest uses a hardcoded image instead of the `PLACEHOLDER`
   convention — the overlay transformer can't rewrite it.
 
-**Fix:** Always verify with `kustomize build <overlay> | grep image:`
-before applying. The base manifests use
-`PLACEHOLDER/plinth-{backend,frontend}:0.0.0` — never edit
-these directly; the overlay rewrites them.
+**Fix:** Always verify with `kubectl kustomize <overlay> | grep
+image:` before applying. The base manifests use
+`PLACEHOLDER/plinth-{backend,frontend}:0.0.0` — never edit these
+directly; the overlay rewrites them.
+
+**Prevention:** `kubectl kustomize <overlay> | grep image:` is already
+a cheap check point — never skip it before merging an overlay change.
 
 ---
 
 ## 13. Frontend build fails with "BACKEND_URL" not set
 
-**Check:**
+**Symptom:** `npm run build` (or the CI build step) fails during the
+Next.js build.
 
+**Triage commands:**
 ```bash
-# In the CI log or locally:
 cd frontend && npm run build 2>&1 | head -20
 ```
 
-**Common causes:**
+**Likely causes:**
 - The `BACKEND_URL` env var isn't passed during `docker build` or `npm
   run build`.
 - The Next.js `rewrites()` function in `next.config.ts` reads
@@ -306,22 +363,25 @@ cd frontend && npm run build 2>&1 | head -20
 docker build --build-arg BACKEND_URL=http://backend:8080 ./frontend
 ```
 
-This is documented in the root README's "Design decisions" section —
-the rewrite is baked into the image at build time, not read at runtime.
+**Prevention:** `BACKEND_URL` is a required build-arg with no default —
+this fails fast in CI, at build time, instead of silently at runtime
+with a broken rewrite. Keep it required.
 
 ---
 
 ## 14. RDS connection works from one pod but not another
 
-**Check:**
+**Symptom:** The backend connects fine; a different pod (frontend,
+debug pod) cannot reach the database at all.
 
+**Triage commands:**
 ```bash
 kubectl exec deploy/backend -- env | grep DATABASE_URL
 kubectl exec deploy/frontend -- env | grep DATABASE_URL 2>&1 || echo "NOT SET"
 kubectl get networkpolicy -o wide
 ```
 
-**Common causes:**
+**Likely causes:**
 - The non-backend pod isn't allowed by the NetworkPolicy — the
   `allow-frontend-to-backend-and-backend-to-postgres` policy only
   admits port 5432 from pods labeled `app.kubernetes.io/name: backend`.
@@ -332,12 +392,18 @@ kubectl get networkpolicy -o wide
 the database. If the backend pod itself can't connect, check the
 NetworkPolicy's `from` rules and the pod labels.
 
+**Prevention:** This is the NetworkPolicy working as designed —
+document it as expected so on-call doesn't "fix" it by widening the
+policy to any pod in the namespace.
+
 ---
 
 ## 15. Monitoring / alerts not firing
 
-**Check:**
+**Symptom:** A known problem occurred but no CloudWatch alarm or
+in-cluster alert fired.
 
+**Triage commands:**
 ```bash
 # CloudWatch
 aws logs describe-log-groups --log-group-name-prefix="/aws/eks"
@@ -348,7 +414,7 @@ kubectl get servicemonitor -A
 kubectl logs deploy/prometheus --tail=50
 ```
 
-**Common causes:**
+**Likely causes:**
 - CloudWatch log group doesn't exist — the EKS cluster's
   `enabled_cluster_log_types` doesn't include the log type you're
   filtering for.
@@ -359,6 +425,10 @@ kubectl logs deploy/prometheus --tail=50
 **Fix:** Verify the log group exists and has data flowing. For alarms,
 check `aws cloudwatch list-metrics --namespace ContainerInsights` to
 confirm metrics are being published before tuning thresholds.
+
+**Prevention:** Validate a new alarm against
+`aws cloudwatch list-metrics` at the moment you create it, not after
+the first incident where you needed it and discovered it was silent.
 
 ---
 
