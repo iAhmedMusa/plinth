@@ -23,19 +23,29 @@ flowchart LR
 
     subgraph vpc["VPC"]
         subgraph pub["public subnets (ALB / NAT only)"]
-            alb[ALB / ingress]
+            alb["ALB / ingress"]
         end
         subgraph app["private-app subnets (EKS nodes)"]
-            fe[frontend pod] --> be[backend pod]
+            fe["frontend pod"]
+            be["backend pod"]
         end
         subgraph db["private-db subnets (no NAT / IGW route)"]
-            rds[(RDS PostgreSQL)]
+            rds[("RDS PostgreSQL")]
         end
     end
 
-    alb --> fe
-    be -->|5432, SG-to-SG| rds
+    alb -->|"Ingress: frontend only"| fe
+    fe -->|"NetworkPolicy default-deny;\nallow frontend to backend only"| be
+    be -->|"5432, SG-to-SG +\nNetworkPolicy (backend-only)"| rds
 ```
+
+Every hop is annotated with what actually blocks unauthorized traffic
+there: the Ingress only routes to the frontend Service, the
+NetworkPolicy's default-deny posture means the backend accepts nothing
+except from frontend-labeled pods, and the database accepts nothing
+except backend-labeled pods over 5432 — enforced twice, once by the
+security group (which machines) and once by the NetworkPolicy (which
+workloads).
 
 The subnet tiers and their routing are defined in
 [`terraform/modules/network/main.tf`](../terraform/modules/network/main.tf):

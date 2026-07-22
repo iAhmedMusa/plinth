@@ -23,6 +23,26 @@ Locally, postgres runs in-cluster as a dev stand-in. Staging/production point th
 
 4. Open http://plinth.localtest.me (resolves to 127.0.0.1 via public DNS).
 
+## Environment promotion
+
+Every overlay starts from the same `base/` and only overrides what that
+environment actually needs to differ:
+
+```mermaid
+flowchart TB
+    base["base/\nDeployments, Services, Ingress,\nNetworkPolicy, PDBs"]
+
+    base --> local["overlays/local\nns: plinth-local\nimage: fixed tag 0.1.2"]
+    base --> staging["overlays/staging\nns: plinth-staging\nimage: CI-pinned tag"]
+    base --> production["overlays/production\nns: plinth-production\nimage: CI-pinned tag\nreplicas: 3 (backend)"]
+    base --> ci["overlays/ci\nns: plinth-ci\nimage: CI-pinned tag\n(ephemeral kind cluster)"]
+```
+
+`local` is the only overlay with a hand-set image tag — the rest get
+theirs from CI (`kustomize edit set image` for `ci`, the same mechanism
+for `staging`/`production` in a real pipeline). `production` is the only
+overlay that patches replica count above the base default.
+
 ## Image tags
 
 Base manifests use `PLACEHOLDER/plinth-{backend,frontend}:0.0.0`. Each overlay rewrites this to the real registry and a pinned semver tag. `latest` is never used.
