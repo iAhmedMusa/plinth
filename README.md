@@ -4,8 +4,30 @@
 
 User profile manager — Next.js frontend, FastAPI backend, PostgreSQL database, all containerized and deployable to Kubernetes.
 
-```
-browser --> frontend:3000 --> backend:8080 --> postgres:5432
+```mermaid
+flowchart TB
+    internet((Internet))
+
+    subgraph vpc["VPC"]
+        subgraph pub["public subnet"]
+            alb["ALB / ingress-nginx"]
+        end
+        subgraph appTier["private-app subnet — EKS node group"]
+            fe["frontend pod"]
+            be["backend pod"]
+        end
+        subgraph dbTier["private-db subnet"]
+            rds[("RDS PostgreSQL")]
+        end
+        nat["NAT gateway"]
+    end
+
+    internet --> alb
+    alb -->|"ingress: / only"| fe
+    fe -->|"ClusterIP, internal-only"| be
+    be -->|"5432, SG-to-SG"| rds
+    appTier -.->|"egress only"| nat
+    nat -.-> internet
 ```
 
 ## Quick start
