@@ -16,4 +16,4 @@ resources:
 labels:
   - includeSelectors: false
     pairs:
-      app.kubernetes.io/part-of: devops-assessment
+      app.kubernetes.io/part-of: plinth

@@ -1,6 +1,6 @@
 # Frontend
 
-Next.js 16 user profile management UI with React 19, TypeScript, and Tailwind CSS. Part of the `devops-assessment` monorepo — see the root [README.md](../README.md) for full-stack setup.
+Next.js 16 user profile management UI with React 19, TypeScript, and Tailwind CSS. Part of the `plinth` monorepo — see the root [README.md](../README.md) for full-stack setup.
 
 ## Quick start
 

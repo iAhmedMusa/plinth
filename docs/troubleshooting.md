@@ -39,8 +39,8 @@ kubectl describe pod <pod-name> | grep -A5 "Events"
 ```
 
 **Common causes:**
-- Typo in the image name or tag (e.g. `devops-assessment-backend:0.1.0`
-  vs `devops-assessment-backend:0.1.0`).
+- Typo in the image name or tag (e.g. `plinth-backend:0.1.0`
+  vs `plinth-backend:0.1.0`).
 - Image doesn't exist in the registry — the tag was never pushed, or
   the CI pipeline that builds it hasn't run yet.
 - `imagePullSecrets` missing or misconfigured for private registries.
@@ -280,7 +280,7 @@ kustomize build k8s/overlays/production | grep "image:"
 
 **Fix:** Always verify with `kustomize build <overlay> | grep image:`
 before applying. The base manifests use
-`PLACEHOLDER/devops-assessment-{backend,frontend}:0.0.0` — never edit
+`PLACEHOLDER/plinth-{backend,frontend}:0.0.0` — never edit
 these directly; the overlay rewrites them.
 
 ---
@@ -341,7 +341,7 @@ NetworkPolicy's `from` rules and the pod labels.
 ```bash
 # CloudWatch
 aws logs describe-log-groups --log-group-name-prefix="/aws/eks"
-aws cloudwatch describe-alarms --alarm-name-prefix="devops-assessment"
+aws cloudwatch describe-alarms --alarm-name-prefix="plinth"
 
 # In-cluster (if using Prometheus)
 kubectl get servicemonitor -A

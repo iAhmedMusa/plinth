@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI REST API for user profiles, backed by PostgreSQL via SQLAlchemy 2.x async (asyncpg). Part of the `devops-assessment` monorepo — see the root [README.md](../README.md) for full-stack setup.
+FastAPI REST API for user profiles, backed by PostgreSQL via SQLAlchemy 2.x async (asyncpg). Part of the `plinth` monorepo — see the root [README.md](../README.md) for full-stack setup.
 
 ## Quick start
 

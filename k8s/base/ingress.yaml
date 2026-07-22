@@ -1,15 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: devops-assessment
+  name: plinth
   labels:
-    app.kubernetes.io/name: devops-assessment
+    app.kubernetes.io/name: plinth
 spec:
   ingressClassName: nginx
   rules:
-    # devops.localtest.me resolves to 127.0.0.1 via public DNS -- no
+    # plinth.localtest.me resolves to 127.0.0.1 via public DNS -- no
     # /etc/hosts edit needed for local dev.
-    - host: devops.localtest.me
+    - host: plinth.localtest.me
       http:
         paths:
           # Only the frontend is routed here. The frontend proxies /api/*

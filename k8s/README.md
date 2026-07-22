@@ -18,14 +18,14 @@ Locally, postgres runs in-cluster as a dev stand-in. Staging/production point th
 
 3. Check pods:
    ```bash
-   kubectl get pods -n devops-assessment-local
+   kubectl get pods -n plinth-local
    ```
 
-4. Open http://devops.localtest.me (resolves to 127.0.0.1 via public DNS).
+4. Open http://plinth.localtest.me (resolves to 127.0.0.1 via public DNS).
 
 ## Image tags
 
-Base manifests use `PLACEHOLDER/devops-assessment-{backend,frontend}:0.0.0`. Each overlay rewrites this to the real registry and a pinned semver tag. `latest` is never used.
+Base manifests use `PLACEHOLDER/plinth-{backend,frontend}:0.0.0`. Each overlay rewrites this to the real registry and a pinned semver tag. `latest` is never used.
 
 ## Requirements mapping
 

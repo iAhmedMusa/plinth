@@ -98,8 +98,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${{ steps.tags.outputs.version }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${{ steps.tags.outputs.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/plinth-backend:${{ steps.tags.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/plinth-backend:${{ steps.tags.outputs.sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
@@ -110,8 +110,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ steps.tags.outputs.version }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ steps.tags.outputs.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/plinth-frontend:${{ steps.tags.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/plinth-frontend:${{ steps.tags.outputs.sha }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
@@ -122,7 +122,7 @@ jobs:
       - name: Scan backend image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${{ steps.tags.outputs.sha }}
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/plinth-backend:${{ steps.tags.outputs.sha }}
           severity: "CRITICAL,HIGH"
           exit-code: "0"
           format: "table"
@@ -131,7 +131,7 @@ jobs:
       - name: Scan frontend image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ steps.tags.outputs.sha }}
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/plinth-frontend:${{ steps.tags.outputs.sha }}
           severity: "CRITICAL,HIGH"
           exit-code: "0"
           format: "table"
@@ -161,12 +161,12 @@ jobs:
           echo
           echo "aws ecr get-login-password --region <aws-region> \\"
           echo "  | docker login --username AWS --password-stdin <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com"
-          echo "docker tag ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${VERSION} \\"
-          echo "  <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/devops-assessment-backend:${VERSION}"
-          echo "docker push <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/devops-assessment-backend:${VERSION}"
-          echo "docker tag ${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${VERSION} \\"
-          echo "  <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/devops-assessment-frontend:${VERSION}"
-          echo "docker push <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/devops-assessment-frontend:${VERSION}"
+          echo "docker tag ${{ secrets.DOCKERHUB_USERNAME }}/plinth-backend:${VERSION} \\"
+          echo "  <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/plinth-backend:${VERSION}"
+          echo "docker push <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/plinth-backend:${VERSION}"
+          echo "docker tag ${{ secrets.DOCKERHUB_USERNAME }}/plinth-frontend:${VERSION} \\"
+          echo "  <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/plinth-frontend:${VERSION}"
+          echo "docker push <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com/plinth-frontend:${VERSION}"
 
       # Real implementation would drop long-lived AWS access keys entirely
       # and authenticate via GitHub OIDC federation:
@@ -194,10 +194,10 @@ jobs:
           body: |
             Images published to Docker Hub:
 
-            - `${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${{ needs.build-and-push.outputs.version }}`
-            - `${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${{ needs.build-and-push.outputs.sha }}`
-            - `${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ needs.build-and-push.outputs.version }}`
-            - `${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ needs.build-and-push.outputs.sha }}`
+            - `${{ secrets.DOCKERHUB_USERNAME }}/plinth-backend:${{ needs.build-and-push.outputs.version }}`
+            - `${{ secrets.DOCKERHUB_USERNAME }}/plinth-backend:${{ needs.build-and-push.outputs.sha }}`
+            - `${{ secrets.DOCKERHUB_USERNAME }}/plinth-frontend:${{ needs.build-and-push.outputs.version }}`
+            - `${{ secrets.DOCKERHUB_USERNAME }}/plinth-frontend:${{ needs.build-and-push.outputs.sha }}`
 
   # Real deploy onto an ephemeral kind cluster created inside the runner --
   # it proves the manifests and the just-built images actually come up
@@ -214,14 +214,14 @@ jobs:
     environment: staging
     env:
       VERSION: ${{ needs.build-and-push.outputs.version }}
-      NAMESPACE: devops-assessment-ci
+      NAMESPACE: plinth-ci
     steps:
       - uses: actions/checkout@v4
 
       - name: Create kind cluster
         uses: helm/kind-action@v1.14.0
         with:
-          cluster_name: devops-assessment-ci
+          cluster_name: plinth-ci
           config: .github/kind/kind-config.yaml
 
       - name: Install ingress-nginx
@@ -238,8 +238,8 @@ jobs:
         working-directory: k8s/overlays/ci
         run: |
           kustomize edit set image \
-            "PLACEHOLDER/devops-assessment-backend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${VERSION}" \
-            "PLACEHOLDER/devops-assessment-frontend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${VERSION}"
+            "PLACEHOLDER/plinth-backend=${{ secrets.DOCKERHUB_USERNAME }}/plinth-backend:${VERSION}" \
+            "PLACEHOLDER/plinth-frontend=${{ secrets.DOCKERHUB_USERNAME }}/plinth-frontend:${VERSION}"
 
       - name: Deploy manifests
         run: kubectl apply -k k8s/overlays/ci
@@ -260,8 +260,8 @@ jobs:
         # the first request or two can 503 -- retry instead of a single shot.
         run: |
           curl --fail --retry 5 --retry-delay 3 --retry-all-errors \
-            --resolve devops.localtest.me:80:127.0.0.1 \
-            http://devops.localtest.me/
+            --resolve plinth.localtest.me:80:127.0.0.1 \
+            http://plinth.localtest.me/
 
       - name: Dump diagnostics on failure
         if: failure()
@@ -289,10 +289,10 @@ jobs:
         run: |
           echo "MOCK ONLY — no cluster is configured, nothing below is executed."
           echo
-          echo "kubectl set image deployment/backend backend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${VERSION} -n production"
-          echo "kubectl set image deployment/frontend frontend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${VERSION} -n production"
-          echo "kubectl rollout status deployment/backend -n production"
-          echo "kubectl rollout status deployment/frontend -n production"
+          echo "kubectl set image deployment/backend backend=${{ secrets.DOCKERHUB_USERNAME }}/plinth-backend:${VERSION} -n plinth-production"
+          echo "kubectl set image deployment/frontend frontend=${{ secrets.DOCKERHUB_USERNAME }}/plinth-frontend:${VERSION} -n plinth-production"
+          echo "kubectl rollout status deployment/backend -n plinth-production"
+          echo "kubectl rollout status deployment/frontend -n plinth-production"
 
       # Stays mocked: no real production cluster exists, and the point of
       # this job is the required-reviewer gate on the "production"

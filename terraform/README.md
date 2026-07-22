@@ -137,7 +137,7 @@ actually deployed. State — remote or local — is never committed to git
 ## 6. dev/staging/production separation
 
 - **Separate state files.** Each environment's `envs/*.tfvars` pairs with
-  its own backend `key` (e.g. `devops-assessment/dev/terraform.tfstate`,
+  its own backend `key` (e.g. `plinth/dev/terraform.tfstate`,
   `.../staging/...`, `.../production/...`) in the same S3 bucket —
   distinct state, distinct lock, distinct blast radius (section 1).
 - **Separate AWS accounts is the real-world gold standard**, not just

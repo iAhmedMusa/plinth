@@ -10,7 +10,7 @@ real runs — no mocked or synthetic output.
 ### Local cluster running all three services
 
 Two backend replicas, two frontend replicas, one postgres — all running
-in the `devops-assessment-local` namespace:
+in the `plinth-local` namespace:
 
 ![kubectl get all — local namespace](proof/Screenshot%202026-07-04%20at%2011.07.11.png)
 

@@ -70,7 +70,7 @@ trade-off note in
 ## 3. Private DNS requirement
 
 The RDS endpoint is a *hostname* (e.g.
-`devops-assessment-production-db.xxxx.ap-southeast-1.rds.amazonaws.com`),
+`plinth-production-db.xxxx.ap-southeast-1.rds.amazonaws.com`),
 not an IP. Inside the VPC it resolves through the VPC's Route 53 resolver
 to the instance's **private IP** — which works because the network module
 sets `enable_dns_support = true` and `enable_dns_hostnames = true` on the
@@ -171,7 +171,7 @@ Checklist, runnable against a real deployment:
 ```bash
 # 1. The instance itself says so
 aws rds describe-db-instances \
-  --db-instance-identifier devops-assessment-production-db \
+  --db-instance-identifier plinth-production-db \
   --query 'DBInstances[0].PubliclyAccessible'     # must be false
 
 # 2. Public DNS gives you nothing usable (run from outside the VPC)

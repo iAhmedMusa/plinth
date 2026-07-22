@@ -1,6 +1,6 @@
 environment        = "production"
 region             = "ap-southeast-1"
-cluster_name       = "devops-assessment"
+cluster_name       = "plinth"
 kubernetes_version = "1.30"
 vpc_cidr           = "10.2.0.0/16"
 
@@ -14,6 +14,6 @@ db_name           = "appdb"
 db_username       = "appuser"
 
 tags = {
-  Project     = "devops-assessment"
+  Project     = "plinth"
   Environment = "production"
 }

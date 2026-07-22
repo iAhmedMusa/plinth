@@ -14,8 +14,8 @@
 #
 # terraform {
 #   backend "s3" {
-#     bucket       = "devops-assessment-tfstate-<account-id>"
-#     key          = "devops-assessment/<environment>/terraform.tfstate"
+#     bucket       = "plinth-tfstate-<account-id>"
+#     key          = "plinth/<environment>/terraform.tfstate"
 #     region       = "ap-southeast-1"
 #     encrypt      = true
 #     use_lockfile = true

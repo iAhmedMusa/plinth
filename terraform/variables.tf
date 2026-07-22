@@ -17,7 +17,7 @@ variable "region" {
 variable "cluster_name" {
   description = "Base cluster name. The environment is appended to form the actual name prefix (see locals in main.tf)."
   type        = string
-  default     = "devops-assessment"
+  default     = "plinth"
 }
 
 variable "kubernetes_version" {

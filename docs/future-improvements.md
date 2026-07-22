@@ -107,15 +107,15 @@ This works, but:
    apiVersion: argoproj.io/v1alpha1
    kind: Application
    metadata:
-     name: devops-assessment
+     name: plinth
    spec:
      project: default
      source:
-       repoURL: https://github.com/iAhmedMusa/devops-assessment
+       repoURL: https://github.com/iAhmedMusa/plinth
        path: k8s/overlays/production
      destination:
        server: https://kubernetes.default.svc
-       namespace: devops-assessment
+       namespace: plinth
      syncPolicy:
        automated:
          prune: true
@@ -229,7 +229,7 @@ Today, logs are only accessible via `kubectl logs` — which:
    node and ships them to Loki.
 2. Deploy Loki as the log store — it indexes labels (namespace, pod,
    container) without full-text indexing, keeping storage costs low.
-3. Grafana queries Loki with LogQL: `{namespace="devops-assessment",
+3. Grafana queries Loki with LogQL: `{namespace="plinth",
    app="backend"} |= "ERROR"`.
 
 **For AWS:** Ship to CloudWatch Logs via the CloudWatch Logs agent, then
@@ -347,7 +347,7 @@ policies mandatory at the cluster level.
            }
    ```
 
-3. Apply the constraint to the `devops-assessment` namespace.
+3. Apply the constraint to the `plinth` namespace.
 
 ### Risk removed
 

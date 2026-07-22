@@ -1,4 +1,4 @@
-# DevOps Assessment
+# Plinth
 
 [![CI/CD](https://github.com/iAhmedMusa/devops-assessment/actions/workflows/deploy.yml/badge.svg)](https://github.com/iAhmedMusa/devops-assessment/actions/workflows/deploy.yml)
 

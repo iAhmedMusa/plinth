@@ -26,7 +26,7 @@ spec:
         - name: frontend
           # PLACEHOLDER -- real registry/tag set ONLY via the kustomize
           # `images:` transformer in overlays/*, never edited here.
-          image: PLACEHOLDER/devops-assessment-frontend:0.0.0
+          image: PLACEHOLDER/plinth-frontend:0.0.0
           ports:
             - containerPort: 3000
           # Next.js standalone server has no /health route; "/" is cheap

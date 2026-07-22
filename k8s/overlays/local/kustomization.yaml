@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: devops-assessment-local
+namespace: plinth-local
 
 resources:
   - namespace.yaml
@@ -11,9 +11,9 @@ resources:
 # base/ never has to change. Swap the repository below for your own
 # Docker Hub user if different.
 images:
-  - name: PLACEHOLDER/devops-assessment-backend
-    newName: ahmedmusa/devops-assessment-backend
+  - name: PLACEHOLDER/plinth-backend
+    newName: ahmedmusa/plinth-backend
     newTag: "0.1.2"
-  - name: PLACEHOLDER/devops-assessment-frontend
-    newName: ahmedmusa/devops-assessment-frontend
+  - name: PLACEHOLDER/plinth-frontend
+    newName: ahmedmusa/plinth-frontend
     newTag: "0.1.2"
